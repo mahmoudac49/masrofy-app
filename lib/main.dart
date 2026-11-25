@@ -1,25 +1,204 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
-  runApp(MasrofyApp(prefs: prefs));
+  runApp(const MasrofyProApp());
 }
 
-class ExpenseItem {
+// ==========================================
+// 1. LOCALIZATION HELPER (AR / EN)
+// ==========================================
+class AppStrings {
+  final bool isAr;
+  const AppStrings(this.isAr);
+
+  String get appTitle => isAr ? 'مصروفي برو' : 'Masrofy Pro';
+  String get welcomeTitle => isAr ? 'أهلاً بك في مصروفي' : 'Welcome to Masrofy';
+  String get welcomeSub => isAr
+      ? 'ابدأ رحلتك في تنظيم مصاريفك وميزانيتك الشهرية بذكاء'
+      : 'Start organizing your daily expenses and monthly budget smartly';
+  String get enterYourName => isAr ? 'اكتب اسمك' : 'Enter your name';
+  String get monthlyBudgetLabel =>
+      isAr ? 'الميزانية الشهرية المستهدفة (ج.م)' : 'Target Monthly Budget (EGP)';
+  String get startNow => isAr ? 'ابدأ الاستخدام الآن' : 'Get Started';
+  String get currency => isAr ? 'ج.م' : 'EGP';
+
+  // Navigation Tabs
+  String get navHome => isAr ? 'الرئيسية' : 'Home';
+  String get navAnalytics => isAr ? 'الإحصائيات' : 'Analytics';
+  String get navHistory => isAr ? 'السجل' : 'History';
+  String get navSettings => isAr ? 'الإعدادات' : 'Settings';
+
+  // Home & Balance
+  String greeting(String name) => isAr ? 'أهلاً بك، $name 👋' : 'Welcome, $name 👋';
+  String get subtitleHome =>
+      isAr ? 'ملخص وضعك المالي اليوم' : 'Your financial overview today';
+  String get currentBalance => isAr ? 'الرصيد الحالي المتاح' : 'Current Available Balance';
+  String get totalIncome => isAr ? 'إجمالي الدخل' : 'Total Income';
+  String get totalExpense => isAr ? 'إجمالي المصروفات' : 'Total Expenses';
+  String get budgetUsage => isAr ? 'استهلاك ميزانية الشهر' : 'Monthly Budget Usage';
+  String get recentTransactions => isAr ? 'أحدث العمليات' : 'Recent Transactions';
+  String get seeAll => isAr ? 'عرض الكل' : 'See All';
+  String get newTransaction => isAr ? 'عملية جديدة' : 'New Entry';
+
+  // Analytics
+  String get analyticsTitle => isAr ? 'التحليل المالي والإحصائيات' : 'Financial Analytics';
+  String get expenseByCategory =>
+      isAr ? 'توزيع المصروفات حسب الفئة' : 'Expenses by Category';
+  String get noAnalyticsData => isAr
+      ? 'سجّل بعض المصروفات أولاً لعرض الرسوم البيانية'
+      : 'Add some expenses first to view analytics charts';
+
+  // History & Filters
+  String get historyTitle => isAr ? 'سجل المعاملات الكامل' : 'Full Transaction History';
+  String get searchHint =>
+      isAr ? 'ابحث بالاسم أو الفئة...' : 'Search by title or category...';
+  String get filterAll => isAr ? 'الكل' : 'All';
+  String get filterToday => isAr ? 'اليوم' : 'Today';
+  String get filterMonth => isAr ? 'هذا الشهر' : 'This Month';
+  String get filterExpense => isAr ? 'مصروفات' : 'Expenses';
+  String get filterIncome => isAr ? 'دخل' : 'Income';
+  String get noTransactions =>
+      isAr ? 'لا توجد عمليات مطابقة حالياً' : 'No matching transactions found';
+
+  // Add Sheet
+  String get addEntryTitle => isAr ? 'إضافة عملية مالية جديدة' : 'Add New Transaction';
+  String get expenseLabel => isAr ? 'مصروف' : 'Expense';
+  String get incomeLabel => isAr ? 'دخل / رصيد' : 'Income';
+  String get titleHintExpense => isAr
+      ? 'تفاصيل المصروف (مثلاً: غداء، مواصلات)'
+      : 'Expense title (e.g., Lunch, Transport)';
+  String get titleHintIncome => isAr
+      ? 'مصدر الدخل (مثلاً: مصروف الشهر، مكافأة)'
+      : 'Income source (e.g., Allowance, Bonus)';
+  String get amountLabel => isAr ? 'المبلغ' : 'Amount';
+  String get chooseCategory => isAr ? 'اختر الفئة:' : 'Choose Category:';
+  String get dateLabel => isAr ? 'التاريخ' : 'Date';
+  String get saveBtn => isAr ? 'حفظ العملية' : 'Save Transaction';
+
+  // Settings
+  String get settingsTitle => isAr ? 'الإعدادات والحساب' : 'Settings & Profile';
+  String get profileSection => isAr ? 'البيانات الشخصية والميزانية' : 'Profile & Budget';
+  String get saveChanges => isAr ? 'حفظ التعديلات' : 'Save Changes';
+  String get savedSuccess => isAr ? 'تم حفظ التعديلات بنجاح' : 'Changes saved successfully';
+  String get appearanceSection => isAr ? 'المظهر واللغة' : 'Appearance & Language';
+  String get darkModeTitle => isAr ? 'الوضع الليلي (Dark Mode)' : 'Dark Mode';
+  String get languageTitle => isAr ? 'لغة التطبيق' : 'App Language';
+  String get languageValue => isAr ? 'العربية' : 'English';
+  String get clearDataBtn => isAr ? 'مسح جميع البيانات والبدء من جديد' : 'Reset All Data';
+  String get clearConfirmTitle => isAr ? 'تأكيد مسح البيانات' : 'Confirm Reset';
+  String get clearConfirmMsg => isAr
+      ? 'سيتم حذف جميع المعاملات وإعادة التطبيق لشاشة البداية. هل أنت متأكد؟'
+      : 'All transactions will be deleted and the app will reset. Are you sure?';
+  String get cancel => isAr ? 'إلغاء' : 'Cancel';
+  String get confirm => isAr ? 'تأكيد' : 'Confirm';
+  String deletedMsg(String title) => isAr ? 'تم حذف "$title"' : 'Deleted "$title"';
+  String get undo => isAr ? 'تراجع' : 'Undo';
+}
+
+// ==========================================
+// 2. DATA MODELS & CATEGORIES
+// ==========================================
+enum TransactionType { expense, income }
+
+class CategoryInfo {
+  final String id;
+  final String nameAr;
+  final String nameEn;
+  final IconData icon;
+  final Color color;
+
+  const CategoryInfo({
+    required this.id,
+    required this.nameAr,
+    required this.nameEn,
+    required this.icon,
+    required this.color,
+  });
+
+  String getName(bool isAr) => isAr ? nameAr : nameEn;
+}
+
+class AppCategories {
+  static const List<CategoryInfo> expenseCategories = [
+    CategoryInfo(
+        id: 'food',
+        nameAr: 'طعام ومشروبات',
+        nameEn: 'Food & Drinks',
+        icon: Icons.restaurant_rounded,
+        color: Color(0xFFF97316)),
+    CategoryInfo(
+        id: 'transport',
+        nameAr: 'مواصلات',
+        nameEn: 'Transport',
+        icon: Icons.directions_bus_rounded,
+        color: Color(0xFF3B82F6)),
+    CategoryInfo(
+        id: 'study',
+        nameAr: 'دراسة وكتب',
+        nameEn: 'Study & Books',
+        icon: Icons.menu_book_rounded,
+        color: Color(0xFF8B5CF6)),
+    CategoryInfo(
+        id: 'bills',
+        nameAr: 'فواتير وإنترنت',
+        nameEn: 'Bills & Internet',
+        icon: Icons.wifi_rounded,
+        color: Color(0xFFEC4899)),
+    CategoryInfo(
+        id: 'shopping',
+        nameAr: 'تسوق وملابس',
+        nameEn: 'Shopping',
+        icon: Icons.shopping_bag_rounded,
+        color: Color(0xFF14B8A6)),
+    CategoryInfo(
+        id: 'health',
+        nameAr: 'صحة وصيدلية',
+        nameEn: 'Health',
+        icon: Icons.medical_services_rounded,
+        color: Color(0xFFEF4444)),
+    CategoryInfo(
+        id: 'other',
+        nameAr: 'أخرى',
+        nameEn: 'Other',
+        icon: Icons.category_rounded,
+        color: Color(0xFF64748B)),
+  ];
+
+  static const CategoryInfo incomeCategory = CategoryInfo(
+    id: 'income',
+    nameAr: 'دخل / رصيد',
+    nameEn: 'Income / Deposit',
+    icon: Icons.account_balance_wallet_rounded,
+    color: Color(0xFF10B981),
+  );
+
+  static CategoryInfo getById(String id, TransactionType type) {
+    if (type == TransactionType.income) return incomeCategory;
+    return expenseCategories.firstWhere(
+      (c) => c.id == id,
+      orElse: () => expenseCategories.last,
+    );
+  }
+}
+
+class TransactionItem {
   final String id;
   final String title;
   final double amount;
-  final String categoryKey;
+  final TransactionType type;
+  final String categoryId;
   final DateTime date;
 
-  const ExpenseItem({
+  TransactionItem({
     required this.id,
     required this.title,
     required this.amount,
-    required this.categoryKey,
+    required this.type,
+    required this.categoryId,
     required this.date,
   });
 
@@ -27,396 +206,258 @@ class ExpenseItem {
         'id': id,
         'title': title,
         'amount': amount,
-        'categoryKey': categoryKey,
+        'type': type == TransactionType.income ? 'income' : 'expense',
+        'categoryId': categoryId,
         'date': date.toIso8601String(),
       };
 
-  factory ExpenseItem.fromJson(Map<String, dynamic> json) => ExpenseItem(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        amount: (json['amount'] as num).toDouble(),
-        categoryKey: json['categoryKey'] as String,
-        date: DateTime.parse(json['date'] as String),
-      );
-}
-
-class MasrofyApp extends StatefulWidget {
-  final SharedPreferences prefs;
-  const MasrofyApp({super.key, required this.prefs});
-
-  @override
-  State<MasrofyApp> createState() => _MasrofyAppState();
-}
-
-class _MasrofyAppState extends State<MasrofyApp> {
-  late bool isDark;
-  late bool isArabic;
-  late bool hasCompletedOnboarding;
-  late String userName;
-  late double weeklyLimit;
-  late double monthlyLimit;
-  late List<ExpenseItem> _expenses;
-
-  @override
-  void initState() {
-    super.initState();
-    isDark = widget.prefs.getBool('isDark') ?? false;
-    isArabic = widget.prefs.getBool('isArabic') ?? true;
-    hasCompletedOnboarding =
-        widget.prefs.getBool('hasCompletedOnboarding') ?? false;
-    userName = widget.prefs.getString('userName') ?? '';
-    weeklyLimit = widget.prefs.getDouble('weeklyLimit') ?? 1000.0;
-    monthlyLimit = widget.prefs.getDouble('monthlyLimit') ?? 4000.0;
-
-    final rawList = widget.prefs.getStringList('expenses') ?? [];
-    _expenses = rawList
-        .map((e) =>
-            ExpenseItem.fromJson(jsonDecode(e) as Map<String, dynamic>))
-        .toList();
-  }
-
-  Future<void> _saveExpensesToStorage() async {
-    final encoded = _expenses.map((e) => jsonEncode(e.toJson())).toList();
-    await widget.prefs.setStringList('expenses', encoded);
-  }
-
-  Future<void> _completeOnboarding({
-    required String name,
-    required double weekly,
-    required double monthly,
-    required bool arabic,
-  }) async {
-    await widget.prefs.setString('userName', name);
-    await widget.prefs.setDouble('weeklyLimit', weekly);
-    await widget.prefs.setDouble('monthlyLimit', monthly);
-    await widget.prefs.setBool('isArabic', arabic);
-    await widget.prefs.setBool('hasCompletedOnboarding', true);
-
-    setState(() {
-      userName = name;
-      weeklyLimit = weekly;
-      monthlyLimit = monthly;
-      isArabic = arabic;
-      hasCompletedOnboarding = true;
-    });
-  }
-
-  void _toggleTheme() {
-    setState(() => isDark = !isDark);
-    widget.prefs.setBool('isDark', isDark);
-  }
-
-  void _toggleLanguage() {
-    setState(() => isArabic = !isArabic);
-    widget.prefs.setBool('isArabic', isArabic);
-  }
-
-  void _addExpense(ExpenseItem item) {
-    setState(() {
-      _expenses.insert(0, item);
-      _expenses.sort((a, b) => b.date.compareTo(a.date));
-    });
-    _saveExpensesToStorage();
-  }
-
-  void _deleteExpense(String id) {
-    setState(() {
-      _expenses.removeWhere((item) => item.id == id);
-    });
-    _saveExpensesToStorage();
-  }
-
-  void _clearAllExpenses() {
-    setState(() {
-      _expenses.clear();
-    });
-    _saveExpensesToStorage();
-  }
-
-  void _updateLimits(double weekly, double monthly) {
-    setState(() {
-      weeklyLimit = weekly;
-      monthlyLimit = monthly;
-    });
-    widget.prefs.setDouble('weeklyLimit', weekly);
-    widget.prefs.setDouble('monthlyLimit', monthly);
-  }
-
-  void _updateUserName(String name) {
-    setState(() {
-      userName = name;
-    });
-    widget.prefs.setString('userName', name);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: isArabic ? 'مصروفي' : 'Masrofy',
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: isDark ? Brightness.dark : Brightness.light,
-        colorSchemeSeed: Colors.teal,
-      ),
-      builder: (context, child) {
-        return Directionality(
-          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
-          child: child!,
-        );
-      },
-      home: hasCompletedOnboarding
-          ? MainShellPage(
-              userName: userName,
-              isDark: isDark,
-              isArabic: isArabic,
-              weeklyLimit: weeklyLimit,
-              monthlyLimit: monthlyLimit,
-              expenses: _expenses,
-              onToggleTheme: _toggleTheme,
-              onToggleLanguage: _toggleLanguage,
-              onAddExpense: _addExpense,
-              onDeleteExpense: _deleteExpense,
-              onClearAllExpenses: _clearAllExpenses,
-              onUpdateLimits: _updateLimits,
-              onUpdateUserName: _updateUserName,
-            )
-          : WelcomeScreen(
-              isArabic: isArabic,
-              isDark: isDark,
-              onToggleLanguage: _toggleLanguage,
-              onToggleTheme: _toggleTheme,
-              onFinish: _completeOnboarding,
-            ),
+  factory TransactionItem.fromJson(Map<String, dynamic> json) {
+    return TransactionItem(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      amount: (json['amount'] as num).toDouble(),
+      type: json['type'] == 'income' ? TransactionType.income : TransactionType.expense,
+      categoryId: json['categoryId'] as String,
+      date: DateTime.parse(json['date'] as String),
     );
   }
 }
 
-class AppStrings {
-  final bool ar;
-  const AppStrings(this.ar);
+// ==========================================
+// 3. MAIN APP ROOT
+// ==========================================
+class MasrofyProApp extends StatefulWidget {
+  const MasrofyProApp({super.key});
 
-  String get appName => ar ? 'مصروفي' : 'Masrofy';
-  String get welcomeTitle => ar ? 'أهلاً بك في مصروفي' : 'Welcome to Masrofy';
-  String get welcomeSubtitle => ar
-      ? 'نظّم مصاريفك اليومية، وحدد ميزانيتك الأسبوعية والشهرية بسهولة.'
-      : 'Track your daily expenses and manage weekly & monthly limits easily.';
-  String get yourName => ar ? 'اسمك' : 'Your Name';
-  String get enterNameHint => ar ? 'اكتب اسمك هنا...' : 'Enter your name...';
-  String get weeklyBudget => ar ? 'الحد الأسبوعي (ج.م)' : 'Weekly Limit (EGP)';
-  String get monthlyBudget => ar ? 'الحد الشهري (ج.م)' : 'Monthly Limit (EGP)';
-  String get startNow => ar ? 'ابدأ الآن' : 'Get Started';
+  @override
+  State<MasrofyProApp> createState() => _MasrofyProAppState();
+}
 
-  String get navHome => ar ? 'الرئيسية' : 'Home';
-  String get navHistory => ar ? 'السجل' : 'History';
-  String get navAnalytics => ar ? 'الإحصائيات' : 'Analytics';
-  String get navSettings => ar ? 'الإعدادات' : 'Settings';
+class _MasrofyProAppState extends State<MasrofyProApp> {
+  bool _isDarkMode = true;
+  bool _isArabic = true;
+  String? _userName;
+  double _monthlyBudget = 3000.0;
+  bool _isInitialized = false;
 
-  String helloUser(String name) => ar
-      ? 'مرحباً، ${name.isEmpty ? "صديقي" : name}'
-      : 'Hello, ${name.isEmpty ? "Friend" : name}';
-  String get totalExpenses =>
-      ar ? 'إجمالي المصروفات المسجلة' : 'Total Recorded Expenses';
-  String get thisWeek => ar ? 'مصاريف هذا الأسبوع' : 'This Week';
-  String get thisMonth => ar ? 'مصاريف هذا الشهر' : 'This Month';
-  String get recentTransactions => ar ? 'أحدث المعاملات' : 'Recent Transactions';
-  String get noExpensesYet => ar
-      ? 'لا توجد مصروفات بعد. اضغط على زر (+) لإضافة أول مصروف!'
-      : 'No expenses yet. Tap (+) to add your first expense!';
-
-  String get addExpense => ar ? 'إضافة مصروف' : 'Add Expense';
-  String get expenseTitle => ar ? 'اسم المصروف' : 'Expense Title';
-  String get amount => ar ? 'المبلغ' : 'Amount';
-  String get category => ar ? 'التصنيف' : 'Category';
-  String get date => ar ? 'التاريخ' : 'Date';
-  String get save => ar ? 'حفظ' : 'Save';
-  String get currency => ar ? 'ج.م' : 'EGP';
-
-  String get limitExceeded => ar ? 'تجاوزت الحد المسموح!' : 'Limit Exceeded!';
-  String get nearLimit => ar ? 'اقتربت من الحد المسموح' : 'Approaching Limit';
-  String get withinLimit => ar ? 'ضمن الميزانية' : 'Within Budget';
-
-  String get categoryBreakdown =>
-      ar ? 'توزيع المصاريف حسب التصنيف' : 'Spending by Category';
-  String get settingsTitle => ar ? 'الإعدادات والميزانية' : 'Settings & Budget';
-  String get appearance => ar ? 'المظهر الليلي' : 'Dark Mode';
-  String get language => ar ? 'اللغة' : 'Language';
-  String get switchLangLabel =>
-      ar ? 'التبديل إلى الإنجليزية' : 'Switch to Arabic';
-  String get updateBudget =>
-      ar ? 'تحديث حدود الميزانية' : 'Update Budget Limits';
-  String get savedSuccess =>
-      ar ? 'تم حفظ التعديلات بنجاح' : 'Changes saved successfully';
-  String get clearAll => ar ? 'مسح جميع المصاريف' : 'Clear All Expenses';
-
-  String categoryName(String key) {
-    switch (key) {
-      case 'food':
-        return ar ? 'طعام ومشروبات' : 'Food & Drinks';
-      case 'transport':
-        return ar ? 'مواصلات' : 'Transport';
-      case 'study':
-        return ar ? 'دراسة وكتب' : 'Study & Books';
-      case 'bills':
-        return ar ? 'فواتير واشتراكات' : 'Bills & Subscriptions';
-      case 'shopping':
-        return ar ? 'تسوق' : 'Shopping';
-      default:
-        return ar ? 'أخرى' : 'Other';
-    }
+  @override
+  void initState() {
+    super.initState();
+    _loadAppSettings();
   }
 
-  IconData categoryIcon(String key) {
-    switch (key) {
-      case 'food':
-        return Icons.restaurant;
-      case 'transport':
-        return Icons.directions_bus;
-      case 'study':
-        return Icons.menu_book;
-      case 'bills':
-        return Icons.receipt_long;
-      case 'shopping':
-        return Icons.shopping_bag;
-      default:
-        return Icons.category;
-    }
+  Future<void> _loadAppSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isDarkMode = prefs.getBool('masrofy_dark') ?? true;
+      _isArabic = prefs.getBool('masrofy_lang_ar') ?? true;
+      _userName = prefs.getString('masrofy_username');
+      _monthlyBudget = prefs.getDouble('masrofy_budget') ?? 3000.0;
+      _isInitialized = true;
+    });
+  }
+
+  Future<void> _completeOnboarding(String name, double budget, bool isAr) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('masrofy_username', name);
+    await prefs.setDouble('masrofy_budget', budget);
+    await prefs.setBool('masrofy_lang_ar', isAr);
+    setState(() {
+      _userName = name;
+      _monthlyBudget = budget;
+      _isArabic = isAr;
+    });
+  }
+
+  Future<void> _updateProfile(String name, double budget) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('masrofy_username', name);
+    await prefs.setDouble('masrofy_budget', budget);
+    setState(() {
+      _userName = name;
+      _monthlyBudget = budget;
+    });
+  }
+
+  Future<void> _toggleTheme(bool val) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('masrofy_dark', val);
+    setState(() => _isDarkMode = val);
+  }
+
+  Future<void> _toggleLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final nextLang = !_isArabic;
+    await prefs.setBool('masrofy_lang_ar', nextLang);
+    setState(() => _isArabic = nextLang);
+  }
+
+  Future<void> _resetAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    setState(() {
+      _userName = null;
+      _monthlyBudget = 3000.0;
+      _isDarkMode = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const primaryTeal = Color(0xFF0D9488);
+    final strings = AppStrings(_isArabic);
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: strings.appTitle,
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+        colorSchemeSeed: primaryTeal,
+        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+        cardColor: Colors.white,
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorSchemeSeed: primaryTeal,
+        scaffoldBackgroundColor: const Color(0xFF0B1120),
+        cardColor: const Color(0xFF1E293B),
+      ),
+      home: Directionality(
+        textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
+        child: !_isInitialized
+            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+            : (_userName == null || _userName!.trim().isEmpty)
+                ? OnboardingScreen(
+                    isArabic: _isArabic,
+                    onToggleLanguage: _toggleLanguage,
+                    onComplete: _completeOnboarding,
+                  )
+                : MainNavigationShell(
+                    userName: _userName!,
+                    monthlyBudget: _monthlyBudget,
+                    isDarkMode: _isDarkMode,
+                    isArabic: _isArabic,
+                    onToggleTheme: _toggleTheme,
+                    onToggleLanguage: _toggleLanguage,
+                    onUpdateProfile: _updateProfile,
+                    onResetAll: _resetAll,
+                  ),
+      ),
+    );
   }
 }
 
-class WelcomeScreen extends StatefulWidget {
+// ==========================================
+// 4. ONBOARDING WELCOME SCREEN
+// ==========================================
+class OnboardingScreen extends StatefulWidget {
   final bool isArabic;
-  final bool isDark;
   final VoidCallback onToggleLanguage;
-  final VoidCallback onToggleTheme;
-  final Future<void> Function({
-    required String name,
-    required double weekly,
-    required double monthly,
-    required bool arabic,
-  }) onFinish;
+  final Future<void> Function(String name, double budget, bool isAr) onComplete;
 
-  const WelcomeScreen({
+  const OnboardingScreen({
     super.key,
     required this.isArabic,
-    required this.isDark,
     required this.onToggleLanguage,
-    required this.onToggleTheme,
-    required this.onFinish,
+    required this.onComplete,
   });
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> {
-  final _nameController = TextEditingController();
-  final _weeklyController = TextEditingController(text: '1000');
-  final _monthlyController = TextEditingController(text: '4000');
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final _nameCtrl = TextEditingController();
+  final _budgetCtrl = TextEditingController(text: '3000');
+
+  void _submit() {
+    final name = _nameCtrl.text.trim();
+    final budget = double.tryParse(_budgetCtrl.text.trim()) ?? 3000.0;
+    if (name.isEmpty) return;
+    widget.onComplete(name, budget > 0 ? budget : 3000.0, widget.isArabic);
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings(widget.isArabic);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           TextButton.icon(
             onPressed: widget.onToggleLanguage,
-            icon: const Icon(Icons.language),
-            label: Text(widget.isArabic ? 'English' : 'عربي'),
-          ),
-          IconButton(
-            onPressed: widget.onToggleTheme,
-            icon: Icon(widget.isDark ? Icons.light_mode : Icons.dark_mode),
+            icon: const Icon(Icons.language_rounded),
+            label: Text(widget.isArabic ? 'English' : 'العربية'),
           ),
         ],
       ),
-      body: SafeArea(
+      body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 12),
-              CircleAvatar(
-                radius: 42,
-                backgroundColor: Colors.teal.withValues(alpha: 0.15),
-                child: const Icon(Icons.account_balance_wallet,
-                    size: 44, color: Colors.teal),
+              Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  size: 44,
+                  color: Color(0xFF0D9488),
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Text(
                 s.welcomeTitle,
                 textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                s.welcomeSubtitle,
+                s.welcomeSub,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Theme.of(context).textTheme.bodySmall?.color,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 32),
               TextField(
-                controller: _nameController,
+                controller: _nameCtrl,
                 decoration: InputDecoration(
-                  labelText: s.yourName,
-                  hintText: s.enterNameHint,
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                  labelText: s.enterYourName,
+                  prefixIcon: const Icon(Icons.person_outline_rounded),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: _weeklyController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                controller: _budgetCtrl,
+                keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: s.weeklyBudget,
-                  prefixIcon: const Icon(Icons.date_range),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _monthlyController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: s.monthlyBudget,
-                  prefixIcon: const Icon(Icons.calendar_month),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                  labelText: s.monthlyBudgetLabel,
+                  prefixIcon: const Icon(Icons.savings_outlined),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                 ),
               ),
               const SizedBox(height: 28),
-              FilledButton.icon(
+              FilledButton(
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                onPressed: () {
-                  final weekly =
-                      double.tryParse(_weeklyController.text.trim()) ?? 1000.0;
-                  final monthly =
-                      double.tryParse(_monthlyController.text.trim()) ?? 4000.0;
-                  widget.onFinish(
-                    name: _nameController.text.trim(),
-                    weekly: weekly > 0 ? weekly : 1000.0,
-                    monthly: monthly > 0 ? monthly : 4000.0,
-                    arabic: widget.isArabic,
-                  );
-                },
-                icon: const Icon(Icons.arrow_forward),
-                label: Text(s.startNow, style: const TextStyle(fontSize: 16)),
+                onPressed: _submit,
+                child: Text(
+                  s.startNow,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -426,632 +467,1213 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 }
 
-class MainShellPage extends StatefulWidget {
+// ==========================================
+// 5. MULTI-SCREEN NAVIGATION SHELL (4 TABS)
+// ==========================================
+class MainNavigationShell extends StatefulWidget {
   final String userName;
-  final bool isDark;
+  final double monthlyBudget;
+  final bool isDarkMode;
   final bool isArabic;
-  final double weeklyLimit;
-  final double monthlyLimit;
-  final List<ExpenseItem> expenses;
-  final VoidCallback onToggleTheme;
+  final ValueChanged<bool> onToggleTheme;
   final VoidCallback onToggleLanguage;
-  final void Function(ExpenseItem) onAddExpense;
-  final void Function(String) onDeleteExpense;
-  final VoidCallback onClearAllExpenses;
-  final void Function(double, double) onUpdateLimits;
-  final void Function(String) onUpdateUserName;
+  final Future<void> Function(String name, double budget) onUpdateProfile;
+  final Future<void> Function() onResetAll;
 
-  const MainShellPage({
+  const MainNavigationShell({
     super.key,
     required this.userName,
-    required this.isDark,
+    required this.monthlyBudget,
+    required this.isDarkMode,
     required this.isArabic,
-    required this.weeklyLimit,
-    required this.monthlyLimit,
-    required this.expenses,
     required this.onToggleTheme,
     required this.onToggleLanguage,
-    required this.onAddExpense,
-    required this.onDeleteExpense,
-    required this.onClearAllExpenses,
-    required this.onUpdateLimits,
-    required this.onUpdateUserName,
+    required this.onUpdateProfile,
+    required this.onResetAll,
   });
 
   @override
-  State<MainShellPage> createState() => _MainShellPageState();
+  State<MainNavigationShell> createState() => _MainNavigationShellState();
 }
 
-class _MainShellPageState extends State<MainShellPage> {
-  int _selectedIndex = 0;
+class _MainNavigationShellState extends State<MainNavigationShell> {
+  int _currentIndex = 0;
+  List<TransactionItem> _transactions = [];
+  bool _loadingTx = true;
 
-  double get _totalSpent =>
-      widget.expenses.fold(0.0, (sum, item) => sum + item.amount);
-
-  double get _weeklySpent {
-    final now = DateTime.now();
-    final weekAgo = DateTime(now.year, now.month, now.day)
-        .subtract(const Duration(days: 6));
-    return widget.expenses
-        .where((e) => !e.date.isBefore(weekAgo))
-        .fold(0.0, (sum, e) => sum + e.amount);
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
   }
 
-  double get _monthlySpent {
-    final now = DateTime.now();
-    return widget.expenses
-        .where((e) => e.date.year == now.year && e.date.month == now.month)
-        .fold(0.0, (sum, e) => sum + e.amount);
+  Future<void> _loadTransactions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('masrofy_v2_tx_list');
+    if (raw != null) {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      _transactions = decoded
+          .map((e) => TransactionItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+      _transactions.sort((a, b) => b.date.compareTo(a.date));
+    }
+    setState(() => _loadingTx = false);
   }
 
-  String _formatDate(DateTime d) {
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '${d.year}-$m-$day';
+  Future<void> _saveTransactions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = jsonEncode(_transactions.map((e) => e.toJson()).toList());
+    await prefs.setString('masrofy_v2_tx_list', encoded);
   }
 
-  void _openAddExpenseSheet() {
+  void _addTransaction(TransactionItem item) {
+    setState(() {
+      _transactions.insert(0, item);
+      _transactions.sort((a, b) => b.date.compareTo(a.date));
+    });
+    _saveTransactions();
+  }
+
+  void _deleteTransaction(TransactionItem item) {
     final s = AppStrings(widget.isArabic);
-    final titleController = TextEditingController();
-    final amountController = TextEditingController();
-    String selectedCategory = 'food';
-    DateTime selectedDate = DateTime.now();
+    final idx = _transactions.indexOf(item);
+    setState(() => _transactions.remove(item));
+    _saveTransactions();
 
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(s.deletedMsg(item.title)),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: s.undo,
+          onPressed: () {
+            setState(() => _transactions.insert(idx, item));
+            _saveTransactions();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _openAddSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            return Directionality(
-              textDirection:
-                  widget.isArabic ? TextDirection.rtl : TextDirection.ltr,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  top: 20,
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      s.addExpense,
-                      style: const TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: titleController,
-                      decoration: InputDecoration(
-                        labelText: s.expenseTitle,
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: amountController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: '${s.amount} (${s.currency})',
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: s.category,
-                        border: const OutlineInputBorder(),
-                      ),
-                      items: [
-                        'food',
-                        'transport',
-                        'study',
-                        'bills',
-                        'shopping',
-                        'other'
-                      ]
-                          .map((key) => DropdownMenuItem(
-                                value: key,
-                                child: Text(s.categoryName(key)),
-                              ))
-                          .toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() => selectedCategory = val);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: ctx,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2024),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setModalState(() => selectedDate = picked);
-                        }
-                      },
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text('${s.date}: ${_formatDate(selectedDate)}'),
-                    ),
-                    const SizedBox(height: 18),
-                    FilledButton.icon(
-                      onPressed: () {
-                        final title = titleController.text.trim();
-                        final amount =
-                            double.tryParse(amountController.text.trim());
-                        if (title.isNotEmpty && amount != null && amount > 0) {
-                          widget.onAddExpense(
-                            ExpenseItem(
-                              id: DateTime.now()
-                                  .microsecondsSinceEpoch
-                                  .toString(),
-                              title: title,
-                              amount: amount,
-                              categoryKey: selectedCategory,
-                              date: selectedDate,
-                            ),
-                          );
-                          Navigator.pop(ctx);
-                        }
-                      },
-                      icon: const Icon(Icons.check),
-                      label: Text(s.save),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (ctx) => Directionality(
+        textDirection: widget.isArabic ? TextDirection.rtl : TextDirection.ltr,
+        child: AddTransactionSheet(
+          isArabic: widget.isArabic,
+          onAdd: _addTransaction,
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings(widget.isArabic);
-    final pages = [
-      _buildHomePage(s),
-      _buildHistoryPage(s),
-      _buildAnalyticsPage(s),
-      _buildSettingsPage(s),
+
+    if (_loadingTx) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final screens = [
+      HomeTabScreen(
+        userName: widget.userName,
+        monthlyBudget: widget.monthlyBudget,
+        transactions: _transactions,
+        isArabic: widget.isArabic,
+        onDelete: _deleteTransaction,
+        onGoToHistory: () => setState(() => _currentIndex = 2),
+        onToggleLanguage: widget.onToggleLanguage,
+      ),
+      AnalyticsTabScreen(
+        transactions: _transactions,
+        monthlyBudget: widget.monthlyBudget,
+        isArabic: widget.isArabic,
+        isDarkMode: widget.isDarkMode,
+      ),
+      HistoryTabScreen(
+        transactions: _transactions,
+        isArabic: widget.isArabic,
+        onDelete: _deleteTransaction,
+      ),
+      SettingsTabScreen(
+        userName: widget.userName,
+        monthlyBudget: widget.monthlyBudget,
+        isDarkMode: widget.isDarkMode,
+        isArabic: widget.isArabic,
+        onToggleTheme: widget.onToggleTheme,
+        onToggleLanguage: widget.onToggleLanguage,
+        onUpdateProfile: widget.onUpdateProfile,
+        onResetAll: widget.onResetAll,
+      ),
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(s.appName),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: widget.onToggleLanguage,
-            icon: const Icon(Icons.language),
-            tooltip: s.switchLangLabel,
-          ),
-          IconButton(
-            onPressed: widget.onToggleTheme,
-            icon: Icon(widget.isDark ? Icons.light_mode : Icons.dark_mode),
-            tooltip: s.appearance,
-          ),
-        ],
-      ),
-      body: pages[_selectedIndex],
-      floatingActionButton: _selectedIndex == 0 || _selectedIndex == 1
+      body: screens[_currentIndex],
+      floatingActionButton: _currentIndex == 0 || _currentIndex == 2
           ? FloatingActionButton.extended(
-              onPressed: _openAddExpenseSheet,
-              icon: const Icon(Icons.add),
-              label: Text(s.addExpense),
+              onPressed: _openAddSheet,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(
+                s.newTransaction,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             )
           : null,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (idx) => setState(() => _selectedIndex = idx),
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home),
+            selectedIcon: const Icon(Icons.home_rounded),
             label: s.navHome,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.receipt_long_outlined),
-            selectedIcon: const Icon(Icons.receipt_long),
-            label: s.navHistory,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.pie_chart_outline),
-            selectedIcon: const Icon(Icons.pie_chart),
+            icon: const Icon(Icons.pie_chart_outline_rounded),
+            selectedIcon: const Icon(Icons.pie_chart_rounded),
             label: s.navAnalytics,
           ),
           NavigationDestination(
+            icon: const Icon(Icons.receipt_long_outlined),
+            selectedIcon: const Icon(Icons.receipt_long_rounded),
+            label: s.navHistory,
+          ),
+          NavigationDestination(
             icon: const Icon(Icons.settings_outlined),
-            selectedIcon: const Icon(Icons.settings),
+            selectedIcon: const Icon(Icons.settings_rounded),
             label: s.navSettings,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildLimitCard({
-    required String title,
-    required double spent,
-    required double limit,
-    required AppStrings s,
-  }) {
-    final ratio = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
-    final isOver = spent > limit;
-    final isNear = !isOver && ratio >= 0.8;
-    final barColor =
-        isOver ? Colors.redAccent : (isNear ? Colors.orange : Colors.teal);
-    final statusText =
-        isOver ? s.limitExceeded : (isNear ? s.nearLimit : s.withinLimit);
+// ==========================================
+// 6. TAB 1: HOME DASHBOARD
+// ==========================================
+class HomeTabScreen extends StatelessWidget {
+  final String userName;
+  final double monthlyBudget;
+  final List<TransactionItem> transactions;
+  final bool isArabic;
+  final Function(TransactionItem) onDelete;
+  final VoidCallback onGoToHistory;
+  final VoidCallback onToggleLanguage;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+  const HomeTabScreen({
+    super.key,
+    required this.userName,
+    required this.monthlyBudget,
+    required this.transactions,
+    required this.isArabic,
+    required this.onDelete,
+    required this.onGoToHistory,
+    required this.onToggleLanguage,
+  });
+
+  double get _totalIncome => transactions
+      .where((t) => t.type == TransactionType.income)
+      .fold(0.0, (sum, e) => sum + e.amount);
+
+  double get _totalExpense => transactions
+      .where((t) => t.type == TransactionType.expense)
+      .fold(0.0, (sum, e) => sum + e.amount);
+
+  double get _monthExpense {
+    final now = DateTime.now();
+    return transactions
+        .where((t) =>
+            t.type == TransactionType.expense &&
+            t.date.year == now.year &&
+            t.date.month == now.month)
+        .fold(0.0, (sum, e) => sum + e.amount);
+  }
+
+  String _getSmartInsight(AppStrings s) {
+    if (transactions.isEmpty) {
+      return isArabic
+          ? 'اضغط على "عملية جديدة" لتسجيل دخلك أو مصاريفك اليومية.'
+          : 'Tap "New Entry" to start logging your income and daily expenses.';
+    }
+    final ratio = monthlyBudget > 0 ? (_monthExpense / monthlyBudget) : 0.0;
+    if (ratio >= 1.0) {
+      return isArabic
+          ? 'تنبيه: تجاوزت الميزانية الشهرية (${monthlyBudget.toStringAsFixed(0)} ${s.currency})!'
+          : 'Alert: You exceeded your monthly budget (${monthlyBudget.toStringAsFixed(0)} ${s.currency})!';
+    } else if (ratio >= 0.8) {
+      return isArabic
+          ? 'انتبه: استهلكت ${(ratio * 100).toStringAsFixed(0)}% من ميزانية الشهر.'
+          : 'Heads up: You used ${(ratio * 100).toStringAsFixed(0)}% of your monthly budget.';
+    }
+    return isArabic
+        ? 'وضعك المالي متوازن! متبقي ${(monthlyBudget - _monthExpense).clamp(0, double.infinity).toStringAsFixed(0)} ${s.currency} من ميزانية الشهر.'
+        : 'Great job! ${(monthlyBudget - _monthExpense).clamp(0, double.infinity).toStringAsFixed(0)} ${s.currency} left in this month\'s budget.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings(isArabic);
+    final balance = _totalIncome - _totalExpense;
+    final progress =
+        monthlyBudget > 0 ? (_monthExpense / monthlyBudget).clamp(0.0, 1.0) : 0.0;
+
+    Color progressColor = const Color(0xFF34D399);
+    if (progress >= 0.85) {
+      progressColor = const Color(0xFFF87171);
+    } else if (progress >= 0.6) {
+      progressColor = const Color(0xFFFBBF24);
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Text(
+              s.greeting(userName),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              s.subtitleHome,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: onToggleLanguage,
+            icon: const Icon(Icons.language_rounded, size: 18),
+            label: Text(isArabic ? 'EN' : 'عربي'),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0F766E), Color(0xFF0D9488), Color(0xFF115E59)],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0D9488).withValues(alpha: 0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: barColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
+                Text(
+                  s.currentBalance,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${balance.toStringAsFixed(2)} ${s.currency}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(
-                        color: barColor,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _miniStat(
+                        s.totalIncome,
+                        '${_totalIncome.toStringAsFixed(0)} ${s.currency}',
+                        Icons.arrow_downward_rounded,
+                        const Color(0xFF6EE7B7),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _miniStat(
+                        s.totalExpense,
+                        '${_totalExpense.toStringAsFixed(0)} ${s.currency}',
+                        Icons.arrow_upward_rounded,
+                        const Color(0xFFFCA5A5),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${s.budgetUsage} (${_monthExpense.toStringAsFixed(0)}/${monthlyBudget.toStringAsFixed(0)})',
+                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                    Text(
+                      '${(progress * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        color: progressColor,
+                        fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: Colors.white24,
+                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: ratio,
-                minHeight: 10,
-                backgroundColor: barColor.withValues(alpha: 0.15),
-                valueColor: AlwaysStoppedAnimation<Color>(barColor),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${spent.toStringAsFixed(0)} / ${limit.toStringAsFixed(0)} ${s.currency}',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHomePage(AppStrings s) {
-    final recent = widget.expenses.take(4).toList();
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text(
-          s.helloUser(widget.userName),
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.teal.shade700, Colors.teal.shade400],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-            ),
-            borderRadius: BorderRadius.circular(20),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(s.totalExpenses,
-                  style: const TextStyle(color: Colors.white70, fontSize: 15)),
-              const SizedBox(height: 8),
-              Text(
-                '${_totalSpent.toStringAsFixed(2)} ${s.currency}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF0D9488).withValues(alpha: 0.3),
               ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.auto_awesome_rounded, color: Color(0xFF0D9488), size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _getSmartInsight(s),
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                s.recentTransactions,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              if (transactions.isNotEmpty)
+                TextButton(
+                  onPressed: onGoToHistory,
+                  child: Text(s.seeAll),
+                ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        _buildLimitCard(
-          title: s.thisWeek,
-          spent: _weeklySpent,
-          limit: widget.weeklyLimit,
-          s: s,
-        ),
-        _buildLimitCard(
-          title: s.thisMonth,
-          spent: _monthlySpent,
-          limit: widget.monthlyLimit,
-          s: s,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          s.recentTransactions,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        if (recent.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            child: Text(
-              s.noExpensesYet,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15),
-            ),
-          )
-        else
-          ...recent.map((item) => _buildExpenseTile(item, s)),
-        const SizedBox(height: 70),
-      ],
-    );
-  }
-
-  Widget _buildExpenseTile(ExpenseItem item, AppStrings s) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.teal.withValues(alpha: 0.15),
-          child: Icon(s.categoryIcon(item.categoryKey), color: Colors.teal),
-        ),
-        title: Text(item.title,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(
-            '${s.categoryName(item.categoryKey)} • ${_formatDate(item.date)}'),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${item.amount.toStringAsFixed(0)} ${s.currency}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-              onPressed: () => widget.onDeleteExpense(item.id),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHistoryPage(AppStrings s) {
-    if (widget.expenses.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            s.noExpensesYet,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16),
-          ),
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-      itemCount: widget.expenses.length,
-      itemBuilder: (context, index) =>
-          _buildExpenseTile(widget.expenses[index], s),
-    );
-  }
-
-  Widget _buildAnalyticsPage(AppStrings s) {
-    if (widget.expenses.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            s.noExpensesYet,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16),
-          ),
-        ),
-      );
-    }
-
-    final Map<String, double> totalsByCat = {};
-    for (final e in widget.expenses) {
-      totalsByCat[e.categoryKey] = (totalsByCat[e.categoryKey] ?? 0) + e.amount;
-    }
-
-    final sortedEntries = totalsByCat.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text(
-          s.categoryBreakdown,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        ...sortedEntries.map((entry) {
-          final pct = _totalSpent > 0 ? (entry.value / _totalSpent) : 0.0;
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+          if (transactions.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(s.categoryIcon(entry.key), color: Colors.teal),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          s.categoryName(entry.key),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                      ),
-                      Text(
-                        '${entry.value.toStringAsFixed(0)} ${s.currency} (${(pct * 100).toStringAsFixed(0)}%)',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: pct,
-                      minHeight: 8,
-                    ),
+                  Icon(Icons.receipt_long_rounded, size: 52, color: Colors.grey.shade500),
+                  const SizedBox(height: 8),
+                  Text(
+                    s.noTransactions,
+                    style: TextStyle(color: Colors.grey.shade500),
                   ),
                 ],
               ),
-            ),
-          );
-        }),
-      ],
+            )
+          else
+            ...transactions.take(5).map(
+                  (item) => TransactionTileWidget(
+                    item: item,
+                    isArabic: isArabic,
+                    onDelete: () => onDelete(item),
+                  ),
+                ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSettingsPage(AppStrings s) {
-    final nameCtrl = TextEditingController(text: widget.userName);
-    final weeklyCtrl =
-        TextEditingController(text: widget.weeklyLimit.toStringAsFixed(0));
-    final monthlyCtrl =
-        TextEditingController(text: widget.monthlyLimit.toStringAsFixed(0));
+  Widget _miniStat(String label, String val, IconData icon, Color iconColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 16),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                Text(
+                  val,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text(
-          s.settingsTitle,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: Text(s.appearance),
-                secondary:
-                    Icon(widget.isDark ? Icons.dark_mode : Icons.light_mode),
-                value: widget.isDark,
-                onChanged: (_) => widget.onToggleTheme(),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: Text(s.language),
-                subtitle: Text(widget.isArabic ? 'العربية' : 'English'),
-                trailing: OutlinedButton(
-                  onPressed: widget.onToggleLanguage,
-                  child: Text(widget.isArabic ? 'English' : 'عربي'),
+// ==========================================
+// 7. TAB 2: ANALYTICS & CHARTS SCREEN
+// ==========================================
+class AnalyticsTabScreen extends StatelessWidget {
+  final List<TransactionItem> transactions;
+  final double monthlyBudget;
+  final bool isArabic;
+  final bool isDarkMode;
+
+  const AnalyticsTabScreen({
+    super.key,
+    required this.transactions,
+    required this.monthlyBudget,
+    required this.isArabic,
+    required this.isDarkMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings(isArabic);
+    final expenses = transactions.where((t) => t.type == TransactionType.expense).toList();
+    final totalExp = expenses.fold(0.0, (sum, e) => sum + e.amount);
+
+    final Map<String, double> catMap = {};
+    for (var e in expenses) {
+      catMap[e.categoryId] = (catMap[e.categoryId] ?? 0) + e.amount;
+    }
+    final sorted = catMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    return Scaffold(
+      appBar: AppBar(title: Text(s.analyticsTitle)),
+      body: expenses.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.pie_chart_outline_rounded,
+                        size: 64, color: Colors.grey.shade500),
+                    const SizedBox(height: 12),
+                    Text(
+                      s.noAnalyticsData,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 15),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        s.expenseByCategory,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: 170,
+                        height: 170,
+                        child: CustomPaint(
+                          painter: DonutChartPainter(
+                            data: sorted,
+                            total: totalExp,
+                            centerText: '${totalExp.toStringAsFixed(0)}\n${s.currency}',
+                            textColor: isDarkMode ? Colors.white : Colors.black87,
+                            isArabic: isArabic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...sorted.map((entry) {
+                  final cat = AppCategories.getById(entry.key, TransactionType.expense);
+                  final pct = totalExp > 0 ? (entry.value / totalExp) : 0.0;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: cat.color.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(cat.icon, color: cat.color, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                cat.getName(isArabic),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Text(
+                              '${entry.value.toStringAsFixed(0)} ${s.currency} (${(pct * 100).toStringAsFixed(0)}%)',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: pct,
+                            minHeight: 6,
+                            backgroundColor: cat.color.withValues(alpha: 0.15),
+                            valueColor: AlwaysStoppedAnimation<Color>(cat.color),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+    );
+  }
+}
+
+// ==========================================
+// 8. TAB 3: FULL HISTORY & SEARCH SCREEN
+// ==========================================
+class HistoryTabScreen extends StatefulWidget {
+  final List<TransactionItem> transactions;
+  final bool isArabic;
+  final Function(TransactionItem) onDelete;
+
+  const HistoryTabScreen({
+    super.key,
+    required this.transactions,
+    required this.isArabic,
+    required this.onDelete,
+  });
+
+  @override
+  State<HistoryTabScreen> createState() => _HistoryTabScreenState();
+}
+
+class _HistoryTabScreenState extends State<HistoryTabScreen> {
+  String _query = '';
+  String _filter = 'all';
+
+  List<TransactionItem> get _filtered {
+    final now = DateTime.now();
+    return widget.transactions.where((t) {
+      final catName = AppCategories.getById(t.categoryId, t.type).getName(widget.isArabic);
+      final matchText = t.title.toLowerCase().contains(_query.toLowerCase()) ||
+          catName.toLowerCase().contains(_query.toLowerCase());
+      if (!matchText) return false;
+
+      switch (_filter) {
+        case 'today':
+          return t.date.year == now.year &&
+              t.date.month == now.month &&
+              t.date.day == now.day;
+        case 'month':
+          return t.date.year == now.year && t.date.month == now.month;
+        case 'expense':
+          return t.type == TransactionType.expense;
+        case 'income':
+          return t.type == TransactionType.income;
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings(widget.isArabic);
+    final items = _filtered;
+
+    final filters = [
+      {'id': 'all', 'label': s.filterAll},
+      {'id': 'today', 'label': s.filterToday},
+      {'id': 'month', 'label': s.filterMonth},
+      {'id': 'expense', 'label': s.filterExpense},
+      {'id': 'income', 'label': s.filterIncome},
+    ];
+
+    return Scaffold(
+      appBar: AppBar(title: Text(s.historyTitle)),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: TextField(
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: s.searchHint,
+                prefixIcon: const Icon(Icons.search_rounded),
+                filled: true,
+                fillColor: Theme.of(context).cardColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: filters.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (ctx, i) {
+                final f = filters[i];
+                return ChoiceChip(
+                  label: Text(f['label']!),
+                  selected: _filter == f['id'],
+                  onSelected: (_) => setState(() => _filter = f['id']!),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: items.isEmpty
+                ? Center(
+                    child: Text(
+                      s.noTransactions,
+                      style: TextStyle(color: Colors.grey.shade500),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+                    itemCount: items.length,
+                    itemBuilder: (ctx, i) => TransactionTileWidget(
+                      item: items[i],
+                      isArabic: widget.isArabic,
+                      onDelete: () => widget.onDelete(items[i]),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ==========================================
+// 9. TAB 4: SETTINGS & PROFILE SCREEN
+// ==========================================
+class SettingsTabScreen extends StatefulWidget {
+  final String userName;
+  final double monthlyBudget;
+  final bool isDarkMode;
+  final bool isArabic;
+  final ValueChanged<bool> onToggleTheme;
+  final VoidCallback onToggleLanguage;
+  final Future<void> Function(String name, double budget) onUpdateProfile;
+  final Future<void> Function() onResetAll;
+
+  const SettingsTabScreen({
+    super.key,
+    required this.userName,
+    required this.monthlyBudget,
+    required this.isDarkMode,
+    required this.isArabic,
+    required this.onToggleTheme,
+    required this.onToggleLanguage,
+    required this.onUpdateProfile,
+    required this.onResetAll,
+  });
+
+  @override
+  State<SettingsTabScreen> createState() => _SettingsTabScreenState();
+}
+
+class _SettingsTabScreenState extends State<SettingsTabScreen> {
+  late TextEditingController _nameCtrl;
+  late TextEditingController _budgetCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.userName);
+    _budgetCtrl = TextEditingController(text: widget.monthlyBudget.toStringAsFixed(0));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings(widget.isArabic);
+
+    return Scaffold(
+      appBar: AppBar(title: Text(s.settingsTitle)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            s.profileSection,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Container(
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(18),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextField(
-                  controller: nameCtrl,
+                  controller: _nameCtrl,
                   decoration: InputDecoration(
-                    labelText: s.yourName,
-                    border: const OutlineInputBorder(),
+                    labelText: s.enterYourName,
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: weeklyCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  controller: _budgetCtrl,
+                  keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: s.weeklyBudget,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: monthlyCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: s.monthlyBudget,
-                    border: const OutlineInputBorder(),
+                    labelText: s.monthlyBudgetLabel,
+                    prefixIcon: const Icon(Icons.savings_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
                 const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: () {
-                    final w = double.tryParse(weeklyCtrl.text.trim()) ??
-                        widget.weeklyLimit;
-                    final m = double.tryParse(monthlyCtrl.text.trim()) ??
-                        widget.monthlyLimit;
-                    widget.onUpdateUserName(nameCtrl.text.trim());
-                    widget.onUpdateLimits(
-                      w > 0 ? w : widget.weeklyLimit,
-                      m > 0 ? m : widget.monthlyLimit,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(s.savedSuccess)),
-                    );
+                FilledButton(
+                  onPressed: () async {
+                    final n = _nameCtrl.text.trim();
+                    final b = double.tryParse(_budgetCtrl.text.trim());
+                    if (n.isNotEmpty && b != null && b > 0) {
+                      await widget.onUpdateProfile(n, b);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(s.savedSuccess)),
+                        );
+                      }
+                    }
                   },
-                  icon: const Icon(Icons.save),
-                  label: Text(s.updateBudget),
+                  child: Text(s.saveChanges),
                 ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        if (widget.expenses.isNotEmpty)
+          const SizedBox(height: 20),
+          Text(
+            s.appearanceSection,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.dark_mode_rounded),
+                  title: Text(s.darkModeTitle),
+                  value: widget.isDarkMode,
+                  onChanged: widget.onToggleTheme,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.language_rounded),
+                  title: Text(s.languageTitle),
+                  trailing: FilledButton.tonal(
+                    onPressed: widget.onToggleLanguage,
+                    child: Text(s.languageValue),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.redAccent,
-              side: const BorderSide(color: Colors.redAccent),
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
               padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
-            onPressed: widget.onClearAllExpenses,
-            icon: const Icon(Icons.delete_forever),
-            label: Text(s.clearAll),
+            icon: const Icon(Icons.delete_forever_rounded),
+            label: Text(s.clearDataBtn),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => Directionality(
+                  textDirection: widget.isArabic ? TextDirection.rtl : TextDirection.ltr,
+                  child: AlertDialog(
+                    title: Text(s.clearConfirmTitle),
+                    content: Text(s.clearConfirmMsg),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(s.cancel),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          widget.onResetAll();
+                        },
+                        child: Text(s.confirm),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+// ==========================================
+// 10. SHARED WIDGETS & PAINTERS
+// ==========================================
+class TransactionTileWidget extends StatelessWidget {
+  final TransactionItem item;
+  final bool isArabic;
+  final VoidCallback onDelete;
+
+  const TransactionTileWidget({
+    super.key,
+    required this.item,
+    required this.isArabic,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings(isArabic);
+    final cat = AppCategories.getById(item.categoryId, item.type);
+    final isIncome = item.type == TransactionType.income;
+    final dateStr =
+        '${item.date.year}/${item.date.month.toString().padLeft(2, '0')}/${item.date.day.toString().padLeft(2, '0')}';
+
+    return Dismissible(
+      key: ValueKey(item.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.red.shade600,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        alignment: isArabic ? Alignment.centerLeft : Alignment.centerRight,
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+      ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ListTile(
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: cat.color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(cat.icon, color: cat.color),
+          ),
+          title: Text(
+            item.title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          subtitle: Text(
+            '${cat.getName(isArabic)} • $dateStr',
+            style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500),
+          ),
+          trailing: Text(
+            '${isIncome ? '+' : '-'}${item.amount.toStringAsFixed(0)} ${s.currency}',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: isIncome ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DonutChartPainter extends CustomPainter {
+  final List<MapEntry<String, double>> data;
+  final double total;
+  final String centerText;
+  final Color textColor;
+  final bool isArabic;
+
+  DonutChartPainter({
+    required this.data,
+    required this.total,
+    required this.centerText,
+    required this.textColor,
+    required this.isArabic,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 10;
+    const strokeWidth = 22.0;
+
+    final bgPaint = Paint()
+      ..color = Colors.grey.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    if (total > 0) {
+      double startAngle = -math.pi / 2;
+      for (var entry in data) {
+        final sweepAngle = (entry.value / total) * 2 * math.pi;
+        final cat = AppCategories.getById(entry.key, TransactionType.expense);
+        final paint = Paint()
+          ..color = cat.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth;
+
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          sweepAngle,
+          false,
+          paint,
+        );
+        startAngle += sweepAngle;
+      }
+    }
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: centerText,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+    )..layout();
+
+    textPainter.paint(
+      canvas,
+      Offset(center.dx - textPainter.width / 2, center.dy - textPainter.height / 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class AddTransactionSheet extends StatefulWidget {
+  final bool isArabic;
+  final Function(TransactionItem) onAdd;
+
+  const AddTransactionSheet({
+    super.key,
+    required this.isArabic,
+    required this.onAdd,
+  });
+
+  @override
+  State<AddTransactionSheet> createState() => _AddTransactionSheetState();
+}
+
+class _AddTransactionSheetState extends State<AddTransactionSheet> {
+  final _titleCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  TransactionType _type = TransactionType.expense;
+  String _selectedCatId = 'food';
+  DateTime _selectedDate = DateTime.now();
+
+  void _submit() {
+    final title = _titleCtrl.text.trim();
+    final amount = double.tryParse(_amountCtrl.text.trim());
+    if (title.isEmpty || amount == null || amount <= 0) return;
+
+    widget.onAdd(
+      TransactionItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        amount: amount,
+        type: _type,
+        categoryId: _type == TransactionType.income ? 'income' : _selectedCatId,
+        date: _selectedDate,
+      ),
+    );
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings(widget.isArabic);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset + 20),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              s.addEntryTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            SegmentedButton<TransactionType>(
+              segments: [
+                ButtonSegment(
+                  value: TransactionType.expense,
+                  label: Text(s.expenseLabel),
+                  icon: const Icon(Icons.remove_circle_outline),
+                ),
+                ButtonSegment(
+                  value: TransactionType.income,
+                  label: Text(s.incomeLabel),
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+              ],
+              selected: {_type},
+              onSelectionChanged: (val) => setState(() => _type = val.first),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _titleCtrl,
+              decoration: InputDecoration(
+                labelText: _type == TransactionType.expense
+                    ? s.titleHintExpense
+                    : s.titleHintIncome,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: '${s.amountLabel} (${s.currency})',
+                prefixIcon: const Icon(Icons.payments_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            if (_type == TransactionType.expense) ...[
+              const SizedBox(height: 14),
+              Text(s.chooseCategory, style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: AppCategories.expenseCategories.map((cat) {
+                  final isSel = _selectedCatId == cat.id;
+                  return ChoiceChip(
+                    avatar: Icon(cat.icon, size: 16, color: isSel ? Colors.white : cat.color),
+                    label: Text(cat.getName(widget.isArabic)),
+                    selected: isSel,
+                    onSelected: (_) => setState(() => _selectedCatId = cat.id),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.calendar_today_rounded, size: 18),
+              label: Text(
+                '${s.dateLabel}: ${_selectedDate.year}/${_selectedDate.month}/${_selectedDate.day}',
+              ),
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2024),
+                  lastDate: DateTime(2030),
+                );
+                if (picked != null) setState(() => _selectedDate = picked);
+              },
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: _submit,
+              child: Text(
+                s.saveBtn,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
